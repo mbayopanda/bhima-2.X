@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const rewire = require('rewire');
 const util = require('util');
 const path = require('path');
-const fs = require('fs');
+const fs = require('mz/fs');
 const exec = util.promisify(require('child_process').exec);
 
 const pdf = rewire('../../server/lib/renderers/pdf');
@@ -24,6 +24,7 @@ const fixturesPath = path.resolve('test/fixtures');
 const htmlFile = path.join(fixturesPath, '/pdf-sample.html');
 const generatedFile = path.join(fixturesPath, '/pdf-sample.pdf');
 
+
 function PDFRenderUnitTest() {
   it('#wkhtmltopdf() creates correctly a PDF file from an HTML', async () => {
     const wk = await exec(`wkhtmltopdf ${htmlFile} ${generatedFile}`);
@@ -36,17 +37,19 @@ function PDFRenderUnitTest() {
     expect(isBuffer && hasValidVersion).to.be.equal(true);
   });
 
-  it.skip('#pdf.render() renders as well #wkhtmltopdf the same PDF file from an HTML', async () => {
-    const result = await pdf.render({}, htmlFile, {});
-    const renderGenerated = result.toString();
+  it('#pdf.render() renders as well #wkhtmltopdf the same PDF file from an HTML', async () => {
 
-    const hasValidVersion = hasValidPdfVersion(renderGenerated);
-    const isBuffer = isBufferInstance(result);
-    expect(isBuffer && hasValidVersion).to.be.equal(true);
+    // load the HTML template into memory as a giant string
+    const tmpl = await fs.readFile(htmlFile, 'utf8');
 
-    // TODO: need a better to compare
-    // const wkGenerated = readFileToString(generatedFile);
-    // expect(renderGenerated).to.be.equal(wkGenerated);
+    // give the giant string to the render method
+    const rendered = await pdf.render({}, tmpl, {});
+    const cached = await fs.readFile(generatedFile);
+
+    expect(isBufferInstance(rendered)).to.equal(true);
+    expect(isBufferInstance(cached)).to.equal(true);
+
+    expect(rendered).to.deep.equal(cached);
   });
 }
 
@@ -70,13 +73,11 @@ function isBufferInstance(file) {
   return file instanceof Buffer;
 }
 
-function readFileToString(filePath) {
-  const file = fs.readFileSync(filePath);
-  return file.toString();
-}
-
-function noop() {
-  return new Promise(resolve => resolve());
+// the actual HTML renderer is mocked here.  Remember, it takes in three arguments:
+// context, template, and options and returns and HTML string.  We'll make it just
+// return the template.
+function noop(context, tmpl) {
+  return Promise.resolve(tmpl);
 }
 
 describe('PDF renderer', PDFRenderUnitTest);
