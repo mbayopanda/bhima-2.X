@@ -28,6 +28,7 @@ const generatedFile = path.join(fixturesPath, '/pdf-sample.pdf');
 function PDFRenderUnitTest() {
   it('#wkhtmltopdf() creates correctly a PDF file from an HTML', async () => {
     const wk = await exec(`wkhtmltopdf ${htmlFile} ${generatedFile}`);
+    // this should be cleaned up.
   });
 
   it('#pdf.render() renders a valid PDF file', async () => {
@@ -49,8 +50,16 @@ function PDFRenderUnitTest() {
     expect(isBufferInstance(rendered)).to.equal(true);
     expect(isBufferInstance(cached)).to.equal(true);
 
-    expect(rendered).to.deep.equal(cached);
+    expect(sliceOutCreationDate(rendered)).to.deep.equal(sliceOutCreationDate(cached));
   });
+}
+
+function sliceOutCreationDate(buffer) {
+  const start = buffer.indexOf('CreationDate');
+  const end = buffer.indexOf(')', start) + 1;
+  const firstPart = buffer.slice(0, start);
+  const secondPart = buffer.slice(end);
+  return Buffer.concat([firstPart, secondPart]);
 }
 
 /**
