@@ -23,13 +23,14 @@ const data = {
 const random = Math.ceil(Math.random() * (10 ** 9));
 
 const fixturesPath = path.resolve('test/fixtures');
+const artifactsPath = path.resolve('test/artifacts');
 const htmlFile = path.join(fixturesPath, '/pdf-sample.html');
 const pdfFile = path.join(fixturesPath, '/pdf-sample.pdf');
-const temporaryFile = path.join(fixturesPath, `/pdf-${random}.pdf`);
+const temporaryFile = path.join(artifactsPath, `/pdf-${random}.pdf`);
 
 function PDFRenderUnitTest() {
-  it('#wkhtmltopdf() creates correctly a PDF file from an HTML', async () => {
-    const wk = await exec(`wkhtmltopdf ${htmlFile} ${temporaryFile}`);
+  it('wkhtmltopdf is installed and creates a PDF from an HTML file', async () => {
+    await exec(`wkhtmltopdf ${htmlFile} ${temporaryFile}`);
     fs.unlink(temporaryFile);
   });
 
@@ -55,6 +56,9 @@ function PDFRenderUnitTest() {
     // pdf DateCreation must be ignored when comparing
     const slicedRendered = sliceOutCreationDate(rendered);
     const slicedCached = sliceOutCreationDate(cached);
+
+    // write file to artifacts for AWS S3 storage.
+    await fs.writeFile(path.join(artifactsPath, 'generated.pdf'), rendered);
 
     expect(slicedRendered).to.deep.equal(slicedCached);
   });
